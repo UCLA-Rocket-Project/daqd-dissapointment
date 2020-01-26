@@ -17,6 +17,8 @@ public class PollThread extends Thread {
     Logger log = LoggerFactory.getLogger("poll thread");
     private volatile DaqConfig conf;
     private volatile ReentrantReadWriteLock lock;
+    final long MEM_UPDATE_TIME = 30*1000;
+    long lastMem = 0;
     public PollThread(DaqConfig config, ReentrantReadWriteLock lock) {
         conf = config;
         this.lock = lock;
@@ -33,6 +35,11 @@ public class PollThread extends Thread {
             catch (Exception e) {
                 log.error("Issue in poll loop: ", e);
             }
+            long now = System.currentTimeMillis();
+            if(now > lastMem + MEM_UPDATE_TIME) {
+                log.info("MEM USAGE: "+( (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()) / 1024 / 1024 )+ " MB");
+                lastMem = now;
+            }
         }
     }
     void pollDevices() throws Exception {
@@ -44,6 +51,10 @@ public class PollThread extends Thread {
             List<DaqItem> items = conf.items.get(devName);
             if(now < dev.lastPoll + dev.pollRate) {
                 continue;
+            }
+            long delta = now - (dev.lastPoll + dev.pollRate);
+            if(delta > 5) {
+                log.warn("Missed target update rate for "+devName+" by "+delta+" ms");
             }
             log.debug("Polling for: "+devName);
             if(dev.pollMode == PollMode.SINGLE_SHOT) {
