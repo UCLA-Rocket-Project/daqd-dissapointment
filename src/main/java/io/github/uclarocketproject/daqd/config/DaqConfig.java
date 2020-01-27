@@ -1,6 +1,5 @@
 package io.github.uclarocketproject.daqd.config;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.uclarocketproject.daqd.Main;
 import io.github.uclarocketproject.daqd.json.DaqConfigJson;
 import io.github.uclarocketproject.daqd.json.DeviceJson;
@@ -56,6 +55,7 @@ public class DaqConfig {
             items.put(entry.getKey(), itemList);
         }
         ensureClosedState(prevClosed);
+        log.info("New config fully loaded: "+this);
     }
     public void writeToFile() throws IOException {
         Main.mapper.writeValue(backingFile, configJson);
@@ -86,7 +86,7 @@ public class DaqConfig {
     public void logItem(DaqItem item) {
         writer.print(item.name);
         writer.print(':');
-        writer.print(item.value);
+        writer.print(item.values);
         writer.print(',');
         writer.println(item.lastUpdate);
         writer.flush();
@@ -96,7 +96,7 @@ public class DaqConfig {
         for(DaqItem item : items) {
             writer.print(item.name);
             writer.print(':');
-            writer.print(item.value);
+            writer.print(item.values);
             writer.print(',');
             avgTime += item.lastUpdate;
         }
@@ -117,5 +117,15 @@ public class DaqConfig {
         writer = new PrintWriter(fw);
         log.info("Opened log file @ "+logPath);
         writerClosed = false;
+    }
+
+    @Override
+    public String toString() {
+        try {
+            return Main.mapper.writeValueAsString(this.configJson);
+        }
+        catch (IOException e) {
+            return "howtf";
+        }
     }
 }

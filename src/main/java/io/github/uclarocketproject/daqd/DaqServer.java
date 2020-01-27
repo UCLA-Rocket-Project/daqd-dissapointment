@@ -130,7 +130,7 @@ public class DaqServer extends AFUNIXServerSocket {
         catch(Exception e) {
             log.error("Error updating configuration", e);
         }
-        String ret = Main.mapper.writeValueAsString(conf.configJson);
+        String ret = conf.toString();
         lock.writeLock().unlock();
         return ret;
     };
@@ -143,7 +143,7 @@ public class DaqServer extends AFUNIXServerSocket {
     };
     SockHandler<PrintConfigJson> handlePrintConfig = (PrintConfigJson arg) -> {
         lock.readLock().lock();
-        String ret = Main.mapper.writeValueAsString(conf.configJson);
+        String ret = conf.toString();
         lock.readLock().unlock();
         log.info("Completed print config request");
         return ret;

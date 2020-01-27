@@ -24,10 +24,13 @@ public class Main {
     static DaqServer server;
     public static void main(String[] args) {
         boolean debug = false;
+        boolean auto = false;
         for(String arg : args) {
             if(arg.equals("debug")) {
                 debug = true;
-                break;
+            }
+            else if(arg.equals("auto")) {
+                auto = true;
             }
         }
         ch.qos.logback.classic.Logger root = (ch.qos.logback.classic.Logger)LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
@@ -46,8 +49,7 @@ public class Main {
             poller = new PollThread(config, lock);
             poller.start();
             log.info("Spawned poller thread");
-            log.info("Initial config: "+mapper.writeValueAsString(config.configJson));
-            poller.setRecordingState(true);
+            poller.setRecordingState(auto);
 
             server = new DaqServer(config, poller, lock);
 

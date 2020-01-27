@@ -57,22 +57,22 @@ public class PollThread extends Thread {
                 continue;
             }
             long delta = now - (dev.lastPoll + dev.pollRate);
-            if(delta > 5) {
-                log.warn("Missed target update rate for "+devName+" by "+delta+" ms");
+            if(dev.lastPoll != 0 && delta > 5) {
+                log.warn("Missed target update rate for '"+devName+"' by "+delta+" ms");
             }
             log.debug("Polling for: "+devName);
             if(dev.pollMode == PollMode.SINGLE_SHOT) {
                 for(DaqItem item : items) {
-                    item.updateVal(dev.poll(item.id));
+                    item.updateVals(dev.poll(item.id));
                     log.debug("Updated "+item.name);
                 }
                 conf.logItems(items);
             }
             else if(dev.pollMode == PollMode.ROUND_ROBIN) {
                 DaqItem item = items.get(dev.pollIndex);
-                double val = dev.poll(item.id);
-                if(!Double.isNaN(val)) {
-                    item.updateVal(val);
+                int[] val = dev.poll(item.id);
+                if(val.length != 0) {
+                    item.updateVals(val);
                     conf.logItem(item);
                     dev.pollIndex = (dev.pollIndex+1) % items.size();
                     log.debug("Updated "+item.name);
