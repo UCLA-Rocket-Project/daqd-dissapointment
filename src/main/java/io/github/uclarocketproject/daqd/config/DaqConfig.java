@@ -38,16 +38,19 @@ public class DaqConfig {
         ensureClosedState(true);
         this.configJson = configJson;
         openWriter();
+
+        for(DaqDevice dev : devices.values()) {
+            dev.close();
+        }
         devices.clear();
-        items.clear();
         for (Map.Entry<String, DeviceJson> entry : configJson.devices.entrySet()) {
             DaqDevice dev = loadDevice(entry.getValue().className, entry.getValue().params);
             dev.pollRate = entry.getValue().pollRate;
             dev.pollMode = entry.getValue().pollMode;
             devices.put(entry.getKey(), dev);
         }
-
-        for(Map.Entry<String, List<ItemJson>> entry : configJson.items.entrySet()) {
+       items.clear();
+       for(Map.Entry<String, List<ItemJson>> entry : configJson.items.entrySet()) {
             List<DaqItem> itemList = new LinkedList<>();
             for(ItemJson it : entry.getValue()) {
                 itemList.add(new DaqItem(it));
