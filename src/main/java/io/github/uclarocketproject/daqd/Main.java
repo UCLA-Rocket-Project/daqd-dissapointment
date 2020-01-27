@@ -38,7 +38,7 @@ public class Main {
         try {
             confFile = new File("DaqConfig.json");
             if(confFile.exists()) {
-                log.info("Loading log from: "+confFile);
+                log.info("Loading config from: "+confFile.getCanonicalPath());
                 config = new DaqConfig(confFile);
             }
             else {

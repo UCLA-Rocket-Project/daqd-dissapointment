@@ -114,10 +114,13 @@ public class DaqConfig {
         if(logPath.contains("ROTATE")) {
             DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss");
             dateFormat.setTimeZone(TimeZone.getTimeZone("America/Los_Angeles"));
-            logPath = new File(System.getProperty("user.home"), dateFormat.format(new Date())+"_ROTATE.daqd.log").toString();
+            String dateFmt = dateFormat.format(new Date());
+            logPath = logPath.replace("ROTATE", dateFmt);
             configJson.logPath = logPath;
         }
-        FileWriter fw = new FileWriter(new File(logPath), true);
+        File logFile = new File(logPath);
+        logFile.getParentFile().mkdirs();
+        FileWriter fw = new FileWriter(logFile, true);
         writer = new PrintWriter(fw);
         log.info("Opened log file @ "+logPath);
         writerClosed = false;
