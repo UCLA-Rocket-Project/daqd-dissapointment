@@ -84,25 +84,26 @@ public class DaqConfig {
         }
     }
     public void logItem(DaqItem item) {
-        writer.print(item.name);
-        writer.print(':');
-        writer.print(item.values);
-        writer.print(',');
-        writer.println(item.lastUpdate);
+        printItem(item);
         writer.flush();
     }
     public void logItems(List<DaqItem> items) {
-        long avgTime = 0;
         for(DaqItem item : items) {
-            writer.print(item.name);
-            writer.print(':');
-            writer.print(item.values);
-            writer.print(',');
-            avgTime += item.lastUpdate;
+            printItem(item);
         }
-        avgTime /= items.size();
-        writer.println(avgTime);
         writer.flush();
+    }
+    private void printItem(DaqItem item) {
+        writer.print(item.name);
+        writer.print('|');
+        for(int i = 0; i < item.values.length; i++) {
+            writer.print(item.values[i]);
+            if(i != item.values.length - 1) {
+                writer.print(',');
+            }
+        }
+        writer.print('|');
+        writer.println(item.lastUpdate);
     }
 
     void openWriter() throws IOException {
