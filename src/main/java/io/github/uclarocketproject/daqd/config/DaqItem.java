@@ -4,7 +4,7 @@ import io.github.uclarocketproject.daqd.json.ItemJson;
 
 public class DaqItem {
     public String name;
-    public int id;
+    public String id;
     public double value;
     public double offset;
     public double scale;

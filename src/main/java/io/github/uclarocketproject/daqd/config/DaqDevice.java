@@ -6,7 +6,7 @@ public abstract class DaqDevice {
     public long lastPoll;
     public long pollRate;
     public int pollIndex;
-    public abstract double poll(int id);
+    public abstract double poll(String id);
     public DaqDevice(String params) {
     }
 }

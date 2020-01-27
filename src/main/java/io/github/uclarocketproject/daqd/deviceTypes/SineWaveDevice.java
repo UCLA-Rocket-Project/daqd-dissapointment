@@ -12,7 +12,8 @@ public class SineWaveDevice extends DaqDevice {
         this.offset = Double.parseDouble(tokens[1]);
     }
     @Override
-    public double poll(int id) {
+    public double poll(String idStr) {
+        int id = Integer.parseInt(idStr);
         double phase = id / 5.0;
         double sine = Math.sin(System.currentTimeMillis() * phase / 1000.0);
         return amp*sine + offset;

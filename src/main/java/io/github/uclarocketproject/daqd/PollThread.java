@@ -17,30 +17,34 @@ public class PollThread extends Thread {
     Logger log = LoggerFactory.getLogger("poll thread");
     private volatile DaqConfig conf;
     private volatile ReentrantReadWriteLock lock;
-    final long MEM_UPDATE_TIME = 30*1000;
-    long lastMem = 0;
+    private volatile boolean die = false;
     public PollThread(DaqConfig config, ReentrantReadWriteLock lock) {
         conf = config;
         this.lock = lock;
     }
+    public void die() {
+        try {
+            conf.ensureClosedState(true);
+        }
+        catch (IOException e) {
+            log.error("error closing config: ", e);
+        }
+        this.die = true;
+        log.info("Ready for death");
+    }
     @Override
     public void run() {
-        while(true) {
-            if (!recording) {
-                continue;
-            }
-            try {
-                pollDevices();
-            }
-            catch (Exception e) {
-                log.error("Issue in poll loop: ", e);
-            }
-            long now = System.currentTimeMillis();
-            if(now > lastMem + MEM_UPDATE_TIME) {
-                log.info("MEM USAGE: "+( (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()) / 1024 / 1024 )+ " MB");
-                lastMem = now;
+        while(!die) {
+            if (recording) {
+                try {
+                    pollDevices();
+                }
+                catch (Exception e) {
+                    log.error("Issue in poll loop: ", e);
+                }
             }
         }
+        log.info("Poll thread closed");
     }
     void pollDevices() throws Exception {
         lock.readLock().lock();
@@ -74,6 +78,8 @@ public class PollThread extends Thread {
                     log.debug("Updated "+item.name);
                 }
             }
+            long sampleTime = System.currentTimeMillis() - now;
+            log.debug("Time to sample "+devName+": "+sampleTime+" ms");
             dev.lastPoll = now;
         }
         lock.readLock().unlock();

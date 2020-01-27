@@ -1,22 +1,14 @@
 package io.github.uclarocketproject.daqd;
 
 import ch.qos.logback.classic.Level;
-import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import io.github.uclarocketproject.daqd.config.DaqConfig;
 import io.github.uclarocketproject.daqd.json.DaqConfigJson;
-import io.github.uclarocketproject.daqd.json.ReadJson;
-import org.newsclub.net.unix.AFUNIXServerSocket;
-import org.newsclub.net.unix.AFUNIXSocket;
-import org.newsclub.net.unix.AFUNIXSocketAddress;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.IOException;
-import java.net.SocketAddress;
-import java.util.Scanner;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class Main {
@@ -29,9 +21,17 @@ public class Main {
     static DaqConfig config;
     static PollThread poller;
     static File confFile;
+    static DaqServer server;
     public static void main(String[] args) {
+        boolean debug = false;
+        for(String arg : args) {
+            if(arg.equals("debug")) {
+                debug = true;
+                break;
+            }
+        }
         ch.qos.logback.classic.Logger root = (ch.qos.logback.classic.Logger)LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
-        root.setLevel(Level.INFO);
+        root.setLevel(debug ? Level.DEBUG : Level.INFO);
         try {
             confFile = new File("DaqConfig.json");
             if(confFile.exists()) {
@@ -46,72 +46,23 @@ public class Main {
             poller = new PollThread(config, lock);
             poller.start();
             log.info("Spawned poller thread");
-            log.info("Initial config: "+mapper.writeValueAsString(config.items));
+            log.info("Initial config: "+mapper.writeValueAsString(config.configJson));
             poller.setRecordingState(true);
-            openSocket();
+
+            server = new DaqServer(config, poller, lock);
+
+            Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                log.info("Stop signal caught");
+                poller.die();
+                server.die();
+                log.warn("Goodbye!");
+                Runtime.getRuntime().halt(0);
+            }));
+
+            server.listen();
         }
         catch(Exception e) {
             e.printStackTrace();
-        }
-    }
-    static AFUNIXServerSocket server;
-    static void openSocket() throws IOException {
-        File sockFile = new File(System.getProperty("java.io.tmpdir"), "daqd.sock");
-        SocketAddress sockAddr = new AFUNIXSocketAddress(sockFile);
-        server = AFUNIXServerSocket.newInstance();
-        server.bind(sockAddr);
-        log.info("Listening to file: "+sockFile);
-        while(true) {
-            acceptSock();
-        }
-    }
-    static void acceptSock() throws IOException {
-        AFUNIXSocket sock = server.accept();
-        try (Scanner input = new Scanner(sock.getInputStream())) {
-            log.info("New client connected");
-            sock.setSoTimeout(5000);
-            if (input.hasNextLine()) {
-                String jsonLine = input.nextLine();
-                String response = getResponse(jsonLine);
-                sock.getOutputStream().write(response.getBytes());
-            }
-        }
-        catch (Exception e) {
-            log.error("Exception in handling socket", e);
-            sock.getOutputStream().write(("{\"err\": \""+e.getMessage()+"\"}").getBytes());
-        }
-    }
-    static String getResponse(String jsonLine) throws IOException {
-        try {
-            DaqConfigJson conf = mapper.readValue(jsonLine, DaqConfigJson.class);
-            lock.writeLock().lock();
-            boolean prevClosed = config.isClosed();
-            config.ensureClosedState(true);
-            try {
-                config.loadConfig(conf);
-                log.info("Changed configuration");
-            }
-            catch(Exception e) {
-                log.error("Could not change the config: ", e);
-            }
-            config.writeToFile(confFile);
-            config.ensureClosedState(prevClosed);
-            String ret = mapper.writeValueAsString(config.configJson);
-            lock.writeLock().unlock();
-            return ret;
-        }
-        catch(JsonMappingException e) {
-            try {
-                ReadJson read = mapper.readValue(jsonLine, ReadJson.class);
-                lock.readLock().lock();
-                String ret = mapper.writeValueAsString(config.items);
-                lock.readLock().unlock();
-                log.info("Completed read request");
-                return ret;
-            }
-            catch(JsonMappingException ex) {
-                throw new IOException("invalid input json");
-            }
         }
     }
 }

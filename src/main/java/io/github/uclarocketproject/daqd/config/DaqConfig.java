@@ -22,15 +22,21 @@ public class DaqConfig {
     public DaqConfigJson configJson;
     boolean writerClosed = false;
     Logger log = LoggerFactory.getLogger("DaqConfig");
+    private File backingFile;
+
     public DaqConfig(DaqConfigJson json) throws NoSuchMethodException, InstantiationException, IOException, IllegalAccessException, InvocationTargetException, ClassNotFoundException {
+        backingFile = new File("DaqConfig.json");
         loadConfig(json);
     }
     public DaqConfig(File file) throws IOException, ClassNotFoundException, NoSuchMethodException, InstantiationException, IllegalAccessException, InvocationTargetException {
+        backingFile = file;
         DaqConfigJson json = Main.mapper.readValue(file, DaqConfigJson.class);
         loadConfig(json);
     }
 
    public void loadConfig(DaqConfigJson configJson) throws IOException, ClassNotFoundException, NoSuchMethodException, InvocationTargetException, InstantiationException, IllegalAccessException {
+        boolean prevClosed = isClosed();
+        ensureClosedState(true);
         this.configJson = configJson;
         openWriter();
         devices.clear();
@@ -49,9 +55,10 @@ public class DaqConfig {
             }
             items.put(entry.getKey(), itemList);
         }
+        ensureClosedState(prevClosed);
     }
-    public void writeToFile(File file) throws IOException {
-        Main.mapper.writeValue(file, configJson);
+    public void writeToFile() throws IOException {
+        Main.mapper.writeValue(backingFile, configJson);
     }
     DaqDevice loadDevice(String className, String params) throws ClassNotFoundException, NoSuchMethodException, IllegalAccessException, InvocationTargetException, InstantiationException {
         Class<DaqDevice> devClass = (Class<DaqDevice>) Class.forName(className);
@@ -69,7 +76,9 @@ public class DaqConfig {
             openWriter();
         }
         else {
-            writer.close();
+            if(writer != null) {
+                writer.close();
+            }
             log.info("Closed log file");
             writerClosed = true;
         }
